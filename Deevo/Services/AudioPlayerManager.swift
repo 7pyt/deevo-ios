@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import UIKit
+import ActivityKit
 
 // Gère : la lecture réelle (AVPlayer), la file d'attente, et l'affichage
 // des infos + boutons sur l'écran verrouillé / le centre de contrôle
@@ -22,6 +23,7 @@ final class AudioPlayerManager: ObservableObject {
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
     private var artworkImage: UIImage?
+    private var liveActivity: Activity<DeevoActivityAttributes>?
 
     private init() {
         configureAudioSession()
@@ -87,6 +89,7 @@ final class AudioPlayerManager: ObservableObject {
         isPlaying = true
         fetchArtwork(for: track)
         updateNowPlayingInfo()
+        startOrUpdateLiveActivity(newTrack: true)
     }
 
     func togglePlayPause() {
@@ -94,12 +97,14 @@ final class AudioPlayerManager: ObservableObject {
         if isPlaying { player.pause() } else { player.play() }
         isPlaying.toggle()
         updateNowPlayingInfo()
+        startOrUpdateLiveActivity()
     }
 
     func seek(to seconds: Double) {
         player?.seek(to: CMTime(seconds: seconds, preferredTimescale: 1000))
         currentTime = seconds
         updateNowPlayingInfo()
+        startOrUpdateLiveActivity()
     }
 
     func playNext() {
@@ -142,6 +147,7 @@ final class AudioPlayerManager: ObservableObject {
             self.player?.play()
             self.isPlaying = true
             self.updateNowPlayingInfo()
+            self.startOrUpdateLiveActivity()
             return .success
         }
         center.pauseCommand.addTarget { [weak self] _ in
@@ -149,6 +155,7 @@ final class AudioPlayerManager: ObservableObject {
             self.player?.pause()
             self.isPlaying = false
             self.updateNowPlayingInfo()
+            self.startOrUpdateLiveActivity()
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
@@ -189,6 +196,50 @@ final class AudioPlayerManager: ObservableObject {
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    // MARK: - Live Activity (Dynamic Island / écran verrouillé façon Spotify)
+    // Volontairement mis à jour uniquement sur les événements (lecture,
+    // pause, changement de morceau, déplacement) et pas à chaque tick de
+    // progression : ActivityKit limite/throttle les mises à jour trop
+    // fréquentes (budget d'environ 1 update/seconde, moins en pratique sans
+    // l'entitlement "fréquent"). La barre de progression reste donc figée
+    // entre deux actions plutôt que d'avancer en continu — compromis
+    // raisonnable pour éviter que le système ignore nos mises à jour.
+    private func startOrUpdateLiveActivity(newTrack: Bool = false) {
+        guard let track = currentTrack else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        let state = DeevoActivityAttributes.ContentState(
+            title: track.title,
+            artist: track.artist,
+            artworkURL: track.artworkUrl,
+            isPlaying: isPlaying,
+            elapsed: currentTime,
+            duration: duration
+        )
+
+        if newTrack, let liveActivity {
+            Task { await liveActivity.end(nil, dismissalPolicy: .immediate) }
+            self.liveActivity = nil
+        }
+
+        if let liveActivity, !newTrack {
+            Task { await liveActivity.update(using: state) }
+        } else {
+            let attributes = DeevoActivityAttributes(trackId: track.id)
+            do {
+                liveActivity = try Activity.request(attributes: attributes, content: .init(state: state, staleDate: nil))
+            } catch {
+                print("Impossible de démarrer la Live Activity :", error)
+            }
+        }
+    }
+
+    private func endLiveActivity() {
+        guard let liveActivity else { return }
+        Task { await liveActivity.end(nil, dismissalPolicy: .immediate) }
+        self.liveActivity = nil
     }
 
     private func fetchArtwork(for track: Track) {
