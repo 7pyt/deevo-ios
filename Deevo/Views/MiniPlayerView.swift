@@ -52,8 +52,8 @@ struct MiniPlayerView: View {
             .overlay(alignment: .top) {
                 Rectangle().fill(DeevoTheme.line).frame(height: 1)
             }
-            .sheet(isPresented: $showFullPlayer) {
-                PlayerView()
+            .fullScreenCover(isPresented: $showFullPlayer) {
+                PlayerView(onClose: { showFullPlayer = false })
                     .preferredColorScheme(.dark)
             }
         }
