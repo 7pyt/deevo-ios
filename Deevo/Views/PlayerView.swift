@@ -7,37 +7,13 @@ struct PlayerView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // La pochette occupe une part fixe de la largeur d'écran plutôt
-            // qu'une taille figée (260) : sur un grand écran ça ne laisse
-            // plus un vide autour, sur un petit écran ça ne déborde plus.
             let artworkSize = min(geo.size.width - 64, 340)
 
-            VStack(spacing: 0) {
-                // Barre du haut : bouton fermer (indispensable en
-                // fullScreenCover, qui n'a pas de geste de fermeture natif
-                // contrairement à un sheet classique).
-                HStack {
-                    Button(action: onClose) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(DeevoTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(DeevoTheme.bgElevated))
-                    }
-                    Spacer()
-                    Text("EN LECTURE")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(DeevoTheme.textDim)
-                        .tracking(1)
-                    Spacer()
-                    // Espace symétrique au bouton de gauche pour centrer le titre.
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-
-                Spacer(minLength: 24)
-
+            // Un seul VStack englobant avec un ESPACEMENT FIXE entre chaque
+            // élément (spacing:), pas des Spacer(minLength:) séparés qui se
+            // partageaient tout l'espace restant de façon imprévisible —
+            // c'est ça qui envoyait la barre du haut et le cœur hors écran.
+            VStack(spacing: 28) {
                 if let track = player.currentTrack {
                     AsyncImage(url: track.artworkURL) { image in
                         image.resizable().scaledToFill()
@@ -47,8 +23,6 @@ struct PlayerView: View {
                     .frame(width: artworkSize, height: artworkSize)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
-
-                    Spacer(minLength: 32)
 
                     VStack(spacing: 6) {
                         Text(track.title)
@@ -61,8 +35,6 @@ struct PlayerView: View {
                             .foregroundStyle(DeevoTheme.textDim)
                     }
                     .padding(.horizontal, 32)
-
-                    Spacer(minLength: 28)
 
                     VStack(spacing: 6) {
                         Slider(
@@ -77,8 +49,6 @@ struct PlayerView: View {
                         }
                     }
                     .padding(.horizontal, 28)
-
-                    Spacer(minLength: 28)
 
                     HStack(spacing: 44) {
                         Button { player.playPrevious() } label: {
@@ -98,8 +68,6 @@ struct PlayerView: View {
                         }
                     }
 
-                    Spacer(minLength: 24)
-
                     Button {
                         favorites.toggle(track)
                     } label: {
@@ -107,17 +75,42 @@ struct PlayerView: View {
                             .font(.title2)
                             .foregroundStyle(favorites.contains(track) ? .red : DeevoTheme.textDim)
                     }
-
-                    Spacer(minLength: 32)
                 } else {
-                    Spacer()
                     Text("Aucune lecture en cours").foregroundStyle(DeevoTheme.textDim)
-                    Spacer()
                 }
+            }
+            // Le bloc entier (pochette + titre + slider + contrôles + cœur)
+            // est centré comme UNE SEULE unité dans tout l'espace disponible,
+            // au lieu d'être étiré par des Spacers individuels.
+            .frame(width: geo.size.width, height: geo.size.height)
+
+            // Barre du haut ÉPINGLÉE en haut, indépendante du bloc centré
+            // ci-dessus — elle ne peut plus être poussée hors écran puisque
+            // son positionnement ne dépend d'aucun Spacer.
+            VStack {
+                HStack {
+                    Button(action: onClose) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(DeevoTheme.textPrimary)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(DeevoTheme.bgElevated))
+                    }
+                    Spacer()
+                    Text("EN LECTURE")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(DeevoTheme.textDim)
+                        .tracking(1)
+                    Spacer()
+                    Color.clear.frame(width: 36, height: 36)
+                }
+                .padding(.horizontal, 20)
+                Spacer()
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .background(DeevoTheme.bgVoid.ignoresSafeArea())
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 8) }
     }
 
     private func formatTime(_ seconds: Double) -> String {
