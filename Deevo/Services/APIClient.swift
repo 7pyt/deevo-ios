@@ -37,6 +37,17 @@ final class APIClient {
         baseURL.appendingPathComponent("stream/\(trackId)")
     }
 
+    // Fire-and-forget : lance la résolution du flux côté serveur sans
+    // attendre la réponse. Appelé dès qu'un résultat apparaît dans la
+    // liste, pour que le morceau soit déjà prêt (ou en cours de l'être)
+    // au moment où l'utilisateur appuie vraiment sur play.
+    func prefetch(trackId: String) {
+        let url = baseURL.appendingPathComponent("prefetch/\(trackId)")
+        Task.detached(priority: .background) {
+            _ = try? await URLSession.shared.data(from: url)
+        }
+    }
+
     private static func checkStatus(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
