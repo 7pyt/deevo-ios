@@ -5,19 +5,24 @@ struct FavoritesView: View {
     @StateObject private var store = FavoritesStore.shared
 
     var body: some View {
-        List(store.tracks) { track in
-            Button {
-                player.play(track: track, queue: store.tracks)
-            } label: {
-                TrackRow(track: track)
-            }
-        }
-        .listStyle(.plain)
-        .overlay {
+        ZStack {
+            DeevoTheme.bgVoid.ignoresSafeArea()
+
             if store.tracks.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "heart").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("Aucun favori pour l'instant").foregroundStyle(.secondary)
+                EmptyStateView(icon: "heart", text: "Aucun favori pour l'instant")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(store.tracks) { track in
+                            Button {
+                                player.play(track: track, queue: store.tracks)
+                            } label: {
+                                TrackRow(track: track, isPlaying: player.currentTrack == track && player.isPlaying)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(16)
                 }
             }
         }
