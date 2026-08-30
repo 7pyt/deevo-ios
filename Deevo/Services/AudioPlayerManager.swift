@@ -28,6 +28,64 @@ final class AudioPlayerManager: ObservableObject {
     private init() {
         configureAudioSession()
         configureRemoteCommands()
+        configureInterruptionHandling()
+    }
+
+    // MARK: - Interruptions (appel téléphonique, Siri, autre app audio...)
+    // Sans ça, iOS coupe la lecture pendant l'interruption ET NE LA REPREND
+    // JAMAIS tout seul ensuite — ce qui donne exactement l'impression "la
+    // musique s'est arrêtée en quittant l'app" alors que la vraie cause est
+    // souvent un appel/notification Siri pendant que le tél est en poche.
+    private func configureInterruptionHandling() {
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification, object: nil
+        )
+        // Casque/AirPods débranchés : iOS coupe le son plutôt que de le
+        // renvoyer sur le haut-parleur sans prévenir — comportement standard
+        // qu'on respecte (on ne relance PAS automatiquement dans ce cas).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleRouteChange),
+            name: AVAudioSession.routeChangeNotification, object: nil
+        )
+    }
+
+    @objc private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        Task { @MainActor in
+            switch type {
+            case .began:
+                self.isPlaying = false
+                self.updateNowPlayingInfo()
+            case .ended:
+                let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    try? AVAudioSession.sharedInstance().setActive(true)
+                    self.player?.play()
+                    self.isPlaying = true
+                    self.updateNowPlayingInfo()
+                }
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    @objc private func handleRouteChange(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
+        if reason == .oldDeviceUnavailable {
+            Task { @MainActor in
+                self.player?.pause()
+                self.isPlaying = false
+                self.updateNowPlayingInfo()
+            }
+        }
     }
 
     // MARK: - Session audio
