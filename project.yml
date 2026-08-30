@@ -25,16 +25,4 @@ targets:
         CODE_SIGN_IDENTITY: ""
         DEVELOPMENT_TEAM: ""
     info:
-      properties:
-        UILaunchScreen: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        # Indispensable pour la lecture en écran verrouillé / app en arrière-plan :
-        # sans ça, iOS coupe l'audio dès que l'app passe en arrière-plan.
-        UIBackgroundModes:
-          - audio
-        # À retirer une fois que ton backend est en HTTPS (Katabump/Render le
-        # sont normalement par défaut) : ceci autorise le HTTP en clair, utile
-        # uniquement le temps des tests contre un backend local (ngrok http, etc).
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+      path: Deevo/Info.plist
