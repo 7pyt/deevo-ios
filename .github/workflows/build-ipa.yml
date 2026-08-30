@@ -1,0 +1,46 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:      # bouton "Run workflow" manuel dans l'onglet Actions
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14      # runner macOS fourni par GitHub, avec Xcode préinstallé
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Générer le projet Xcode depuis project.yml
+        run: xcodegen generate
+
+      - name: Build (non signé)
+        run: |
+          xcodebuild \
+            -project Deevo.xcodeproj \
+            -scheme Deevo \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            clean build
+
+      - name: Empaqueter en .ipa
+        run: |
+          mkdir -p Payload
+          cp -r "build/Build/Products/Release-iphoneos/Deevo.app" Payload/
+          zip -r Deevo-unsigned.ipa Payload
+
+      - name: Uploader l'artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deevo-unsigned-ipa
+          path: Deevo-unsigned.ipa

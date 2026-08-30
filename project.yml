@@ -1,0 +1,40 @@
+name: Deevo
+options:
+  bundleIdPrefix: com.y213k.deevo
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+targets:
+  Deevo:
+    type: application
+    platform: iOS
+    sources:
+      - path: Deevo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.y213k.deevo
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        # Build non signé : la signature se fait après coup, par toi, sur
+        # l'IPA produit par GitHub Actions (voir README.md).
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        DEVELOPMENT_TEAM: ""
+    info:
+      properties:
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Indispensable pour la lecture en écran verrouillé / app en arrière-plan :
+        # sans ça, iOS coupe l'audio dès que l'app passe en arrière-plan.
+        UIBackgroundModes:
+          - audio
+        # À retirer une fois que ton backend est en HTTPS (Katabump/Render le
+        # sont normalement par défaut) : ceci autorise le HTTP en clair, utile
+        # uniquement le temps des tests contre un backend local (ngrok http, etc).
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
