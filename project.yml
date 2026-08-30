@@ -2,7 +2,7 @@ name: Deevo
 options:
   bundleIdPrefix: com.y213k.deevo
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "16.2"
   createIntermediateGroups: true
 
 targets:
