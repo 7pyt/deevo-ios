@@ -40,5 +40,9 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- Indispensable pour que l'app ait le droit de démarrer une Live
+	     Activity (Dynamic Island / écran verrouillé façon Spotify). -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>
