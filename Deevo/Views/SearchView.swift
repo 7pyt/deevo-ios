@@ -47,6 +47,12 @@ struct SearchView: View {
         Task {
             do {
                 results = try await APIClient.shared.search(query: trimmed)
+                // Précharge les 3 premiers résultats — les plus probables
+                // d'être écoutés — pendant que l'utilisateur regarde encore
+                // la liste. Le reste se résout normalement au moment du tap.
+                for track in results.prefix(3) {
+                    APIClient.shared.prefetch(trackId: track.id)
+                }
             } catch {
                 errorMessage = "Impossible de contacter le serveur. Vérifie l'URL dans Réglages."
             }
